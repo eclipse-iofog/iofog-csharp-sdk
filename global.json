@@ -1,6 +1,6 @@
 ﻿{
   "projects": [
-    "IoFog.Sdk.CSharp",
+    "IoFog.Sdk.CSharp"
   ],
 
   "sdk": {

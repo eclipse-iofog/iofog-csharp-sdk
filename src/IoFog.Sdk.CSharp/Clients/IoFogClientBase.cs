@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace IoFog.Sdk.CSharp.Clients
@@ -10,35 +11,22 @@ namespace IoFog.Sdk.CSharp.Clients
         protected readonly string Host;
         protected readonly int Port;
 
-        protected static readonly string ContainerId;
-        protected static readonly bool Ssl;
+        protected readonly string ContainerId;
+        protected readonly bool Ssl;
 
-        static IoFogClientBase()
+        private IoFogClientBase()
         {
             Ssl = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ssl"));
-            ContainerId = Environment.GetEnvironmentVariable("selfname");
+            Console.WriteLine($"{DateTime.Now}: " + $"SSL={Ssl}");
+            ContainerId = Environment.GetEnvironmentVariable("SELFNAME");
+            Console.WriteLine($"{DateTime.Now}: " + $"SELFNAME={ContainerId}");
         }
 
-        protected IoFogClientBase(string scheme = null, string host = null, int? port = null)
+        protected IoFogClientBase(string scheme = null, string host = null, int? port = null) : this()
         {
             Scheme = scheme + (Ssl ? "s" : string.Empty);
 
-            if (!string.IsNullOrEmpty(host))
-            {
-                Host = host;
-            }
-            else
-            {
-                Host = "iofog";
-
-                var isHostReachableTask = IsHostReachable(Host);
-                isHostReachableTask.Wait();
-
-                if (!isHostReachableTask.Result)
-                {
-                    Host = "127.0.0.1";
-                }
-            }
+            Host = !string.IsNullOrEmpty(host) ? host : "iofog";
 
             Port = port ?? 54321;
         }
@@ -47,25 +35,6 @@ namespace IoFog.Sdk.CSharp.Clients
         {
             var builder = new UriBuilder(Scheme, Host, Port, relativePath);
             return builder.Uri;
-        }
-
-        protected async Task<bool> IsHostReachable(string host)
-        {
-            using (Ping pinger = new Ping())
-            {
-                bool pingable = false;
-                try
-                {
-                    PingReply reply = await pinger.SendPingAsync(host, 1000).ConfigureAwait(false);
-                    pingable = reply.Status == IPStatus.Success;
-                }
-                catch (PingException)
-                {
-                    pingable = false;
-                }
-
-                return pingable;
-            }
         }
     }
 }

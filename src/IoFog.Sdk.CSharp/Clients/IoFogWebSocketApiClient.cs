@@ -16,16 +16,18 @@ namespace IoFog.Sdk.CSharp.Clients
         private readonly ClientWebSocket _client;
         private readonly IIoFogWebSocketApiHandler _handler;
 
-        private readonly Dictionary<IoFogWebSocketEndpointEnum, string> _endpoints = new Dictionary<IoFogWebSocketEndpointEnum, string>
-        {
-            { IoFogWebSocketEndpointEnum.ControlSocket, $"v2/control/socket/id/{ContainerId}" },
-            { IoFogWebSocketEndpointEnum.MessageSocket, $"v2/message/socket/id/{ContainerId}" },
-        };
+        private readonly Dictionary<IoFogWebSocketEndpointEnum, string> _endpoints;
 
         public IoFogWebSocketApiClient(IIoFogWebSocketApiHandler handler, string host = null, int? port = null) : base("ws", host, port)
         {
             _handler = handler;
             _client = new ClientWebSocket();
+
+            _endpoints = new Dictionary<IoFogWebSocketEndpointEnum, string>
+            {
+                {IoFogWebSocketEndpointEnum.ControlSocket, $"v2/control/socket/id/{ContainerId}"},
+                {IoFogWebSocketEndpointEnum.MessageSocket, $"v2/message/socket/id/{ContainerId}"},
+            };
         }
 
         public WebSocketState State => _client.State;
@@ -34,7 +36,9 @@ namespace IoFog.Sdk.CSharp.Clients
         {
             try
             {
-                await _client.ConnectAsync(BuildUri(_endpoints[endpoint]), CancellationToken.None);
+                var uri = BuildUri(_endpoints[endpoint]);
+                Console.WriteLine($"{DateTime.Now}: " + $"connecting to enpoint: {uri}");
+                await _client.ConnectAsync(uri, CancellationToken.None);
             }
             catch (Exception exception)
             {
@@ -68,7 +72,10 @@ namespace IoFog.Sdk.CSharp.Clients
 
         public async Task SendMessageAsync(IoMessage ioMessage)
         {
-            ioMessage.Publisher = Environment.GetEnvironmentVariable("selfname");
+            ioMessage.Publisher = Environment.GetEnvironmentVariable("SELFNAME");
+            Console.WriteLine($"{DateTime.Now}: " + "sending message over WS:");
+            Console.WriteLine($"{DateTime.Now}: " + ioMessage.ToString());
+            Console.WriteLine();
             byte[] messageRawBytes = ioMessage.GetBytes();
             ArraySegment<byte> requestBuffer;
 
@@ -100,6 +107,7 @@ namespace IoFog.Sdk.CSharp.Clients
 
         public async Task SendAcknowledgeAsync()
         {
+            Console.WriteLine($"{DateTime.Now}: " +"Sending acknowlenge");
             ArraySegment<byte> requestBuffer;
 
             using (var stream = new MemoryStream())
@@ -117,6 +125,7 @@ namespace IoFog.Sdk.CSharp.Clients
 
         public async Task StartListenAsync()
         {
+            Console.WriteLine($"{DateTime.Now}: " +"starting listen WS endpoint");
             while (_client.State == WebSocketState.Open)
             {
                 try
@@ -139,6 +148,7 @@ namespace IoFog.Sdk.CSharp.Clients
                     _handler.OnException(exception);
                 }
             }
+            Console.WriteLine($"{DateTime.Now}: " +"ending of listening WS endpoint");
         }
 
         private async Task SendInternalAsync(ArraySegment<byte> buffer)
@@ -155,21 +165,26 @@ namespace IoFog.Sdk.CSharp.Clients
 
         private async Task HandleRecievedMessage(byte[] content)
         {
-            var opСode = (IoFogWebSocketOpCodeEnum) content[0];
+            var opСode = (IoFogWebSocketOpCodeEnum)content[0];
 
             switch (opСode)
             {
                 case IoFogWebSocketOpCodeEnum.Ping:
+                    Console.WriteLine($"{DateTime.Now}: " +"PING received");
                     break;
                 case IoFogWebSocketOpCodeEnum.Pong:
+                    Console.WriteLine($"{DateTime.Now}: " +"PONG received");
                     break;
                 case IoFogWebSocketOpCodeEnum.Ack:
+                    Console.WriteLine($"{DateTime.Now}: " +"ACK received");
                     break;
                 case IoFogWebSocketOpCodeEnum.ControlSignal:
+                    Console.WriteLine($"{DateTime.Now}: " +"ControlSignal received");
                     await SendAcknowledgeAsync();
                     _handler.OnNewConfigSignal();
                     break;
                 case IoFogWebSocketOpCodeEnum.Message:
+                    Console.WriteLine($"{DateTime.Now}: " +"MESSAGE received");
                     int totalMsgLength = ByteUtils.BytesToInteger(ByteUtils.CopyOfRange(content, 1, 5));
                     int msgLength = totalMsgLength + 5;
                     var message = new IoMessage(ByteUtils.CopyOfRange(content, 5, msgLength));
@@ -177,6 +192,7 @@ namespace IoFog.Sdk.CSharp.Clients
                     _handler.OnMessage(message);
                     break;
                 case IoFogWebSocketOpCodeEnum.Receipt:
+                    Console.WriteLine($"{DateTime.Now}: " +"RECEIPT received");
                     int size = content[1];
                     int pos = 3;
                     string messageId = string.Empty;

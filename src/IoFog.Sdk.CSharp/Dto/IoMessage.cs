@@ -61,7 +61,7 @@ namespace IoFog.Sdk.CSharp.Dto
             ConvertBytesToMessage(header: header, data: data, pos: 0);
         }
 
-        public IoMessage(JObject json) : this()
+        public IoMessage(JObject json, bool decode) : this()
         {
             if (json[IdFieldName] != null)
                 Id = json[IdFieldName].ToObject<string>();
@@ -100,9 +100,31 @@ namespace IoFog.Sdk.CSharp.Dto
             if (json[InfoFormatFieldName] != null)
                 InfoFormat = json[InfoFormatFieldName].ToObject<string>();
             if (json[ContextDataFieldName] != null)
-                ContextData = IoMessageUtils.DecodeBase64(json[ContextDataFieldName].ToObject<string>().GetBytes());
+            {
+                string contextDataString = json[ContextDataFieldName].ToObject<string>();
+                if (decode)
+                {
+                    ContextData = IoMessageUtils.DecodeBase64(contextDataString.GetBytes());
+                }
+                else
+                {
+                    ContextData = contextDataString.GetBytes();
+                }
+            }
+
             if (json[ContentDataFieldName] != null)
-                ContentData = IoMessageUtils.DecodeBase64(json[ContentDataFieldName].ToObject<string>().GetBytes());
+            {
+                string contentDataString = json[ContentDataFieldName].ToObject<string>();
+                if (decode)
+                {
+                    ContentData = IoMessageUtils.DecodeBase64(contentDataString.GetBytes());
+                }
+                else
+                {
+                    ContentData = contentDataString.GetBytes();
+                }
+            }
+            
         }
 
         [JsonProperty(IdFieldName)]
@@ -196,8 +218,32 @@ namespace IoFog.Sdk.CSharp.Dto
             return json;
         }
 
-        public JObject GetJson()
+        public JObject GetJson(bool encoded)
         {
+            string contextData = string.Empty;
+            string contentData = string.Empty;
+
+            byte[] data = ContextData;
+
+            if (data != null)
+            {
+                if (encoded)
+                {
+                    data = IoMessageUtils.EncodeBase64(data);
+                }
+                contextData = StringUtils.NewString(data);
+            }
+
+            data = ContentData;
+            if (data != null)
+            {
+                if (encoded)
+                {
+                    data = IoMessageUtils.EncodeBase64(data);
+                }
+                contentData = StringUtils.NewString(data);
+            }
+
             var json = new JObject
             {
                 {IdFieldName, Id},
@@ -206,7 +252,7 @@ namespace IoFog.Sdk.CSharp.Dto
                 {SequenceNumberFieldName, SequenceNumber},
                 {SequenceTotalFieldName, SequenceTotal},
                 {PriorityFieldName, Priority},
-                {TimestampFieldName, SequenceTotal},
+                {TimestampFieldName, Timestamp},
                 {PublisherFieldName, Publisher},
                 {AuthIdFieldName, AuthId},
                 {AuthGroupFieldName, AuthGroup},
@@ -216,10 +262,10 @@ namespace IoFog.Sdk.CSharp.Dto
                 {PreviousHashFieldName, PreviousHash},
                 {NonceFieldName, Nonce},
                 {DifficultyTargetFieldName, DifficultyTarget},
-                {InfoTypeFieldName, Publisher},
+                {InfoTypeFieldName, InfoType},
                 {InfoFormatFieldName, InfoFormat},
-                {ContextDataFieldName, ContextData == null ? string.Empty : StringUtils.NewString(IoMessageUtils.EncodeBase64(ContextData))},
-                {ContentDataFieldName, ContentData == null ? string.Empty : StringUtils.NewString(IoMessageUtils.EncodeBase64(ContentData))}
+                {ContextDataFieldName, contextData},
+                {ContentDataFieldName, contentData}
             };
 
             return json;
@@ -445,7 +491,7 @@ namespace IoFog.Sdk.CSharp.Dto
 
         public override string ToString()
         {
-            return GetJson().ToString();
+            return GetJson(false).ToString();
         }
 
         private void ConvertBytesToMessage(byte[] header, byte[] data, int pos)

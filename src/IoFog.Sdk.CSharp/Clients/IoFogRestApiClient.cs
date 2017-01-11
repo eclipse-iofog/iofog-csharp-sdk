@@ -24,6 +24,7 @@ namespace IoFog.Sdk.CSharp.Clients
             {
                 BaseAddress = BuildUri()
             };
+            Console.WriteLine($"{DateTime.Now}: " + $"REST client base address: {_client.BaseAddress}");
         }
 
         public async Task<JObject> GetContainerConfigAsync()
@@ -50,8 +51,8 @@ namespace IoFog.Sdk.CSharp.Clients
 
         public async Task<JObject> PostMessageAsync(IoMessage ioMessage)
         {
-            ioMessage.Publisher = Environment.GetEnvironmentVariable("selfname");
-            var content = ioMessage.GetJson();
+            ioMessage.Publisher = Environment.GetEnvironmentVariable("SELFNAME");
+            var content = ioMessage.GetJson(true);
 
             var response = await ExecutePost("v2/messages/new", content);
             return response;
@@ -75,6 +76,10 @@ namespace IoFog.Sdk.CSharp.Clients
         {
             try
             {
+                Console.WriteLine($"{DateTime.Now}: " + $"endpoint: {_client.BaseAddress + url}");
+                Console.WriteLine($"{DateTime.Now}: " +"content:");
+                Console.WriteLine($"{DateTime.Now}: " +content.ToString());
+                Console.WriteLine();
                 using (var message = await _client.PostAsync(url, new JsonContent(content.ToString(), Encoding.UTF8, "application/json")))
                 {
                     await CheckErrorCode(message);

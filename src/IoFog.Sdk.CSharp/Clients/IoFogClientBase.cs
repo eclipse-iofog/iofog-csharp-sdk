@@ -1,4 +1,16 @@
-﻿using System;
+﻿/*
+ *******************************************************************************
+ * Copyright (c) 2018 Edgeworx, Inc.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v. 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *******************************************************************************
+*/
+
+using System;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Threading.Tasks;
